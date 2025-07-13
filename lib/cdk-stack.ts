@@ -3,6 +3,8 @@ import { Construct } from 'constructs';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -17,6 +19,17 @@ export class CdkStack extends cdk.Stack {
       code: lambda.Code.fromInline(`
         exports.handler = async function(event) {
           return { statusCode: 200, body: 'Hello from Lambda!' };
+        };
+      `),
+    });
+
+    // Node.js 20 Lambda function without VPC
+    const node20Lambda = new lambda.Function(this, 'Node20Lambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        exports.handler = async function(event) {
+          return { statusCode: 200, body: 'Hello from Node.js 20 Lambda!' };
         };
       `),
     });
@@ -37,6 +50,14 @@ def handler(event, context):
       `),
       vpc: vpc,
     });
+
+    // EventBridge rule
+    const rule = new events.Rule(this, 'SampleRule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+    });
+
+    // Add Lambda as target for EventBridge rule
+    rule.addTarget(new targets.LambdaFunction(helloLambda));
 
     // example resource
     // const queue = new sqs.Queue(this, 'CdkQueue', {
